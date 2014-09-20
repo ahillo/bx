@@ -1,6 +1,6 @@
 --
--- Copyright 2010-2013 Branimir Karadzic. All rights reserved.
--- License: http://www.opensource.org/licenses/BSD-2-Clause
+-- Copyright 2010-2014 Branimir Karadzic. All rights reserved.
+-- License: https://github.com/bkaradzic/bx#license-bsd-2-clause
 --
 
 local bxDir = (path.getabsolute("..") .. "/")
@@ -13,31 +13,43 @@ function toolchain(_buildDir, _libDir)
 		value = "GCC",
 		description = "Choose GCC flavor",
 		allowed = {
-			{ "android-arm", "Android - ARM" },
-			{ "android-mips", "Android - MIPS" },
-			{ "android-x86", "Android - x86" },
-			{ "asmjs", "Emscripten/asm.js" },
-			{ "freebsd", "FreeBSD" },
-			{ "linux-gcc", "Linux (GCC compiler)" },
-			{ "linux-clang", "Linux (Clang compiler)" },
-			{ "mingw", "MinGW" },
-			{ "nacl", "Native Client" },
-			{ "nacl-arm", "Native Client - ARM" },
-			{ "pnacl", "Native Client - PNaCl" },
-			{ "osx", "OSX" },
-			{ "ios-arm", "iOS - ARM" },
-			{ "ios-simulator", "iOS - Simulator" },
-			{ "qnx-arm", "QNX/Blackberry - ARM" },
-		}
+			{ "android-arm",   "Android - ARM"          },
+			{ "android-mips",  "Android - MIPS"         },
+			{ "android-x86",   "Android - x86"          },
+			{ "asmjs",         "Emscripten/asm.js"      },
+			{ "freebsd",       "FreeBSD"                },
+			{ "linux-gcc",     "Linux (GCC compiler)"   },
+			{ "linux-clang",   "Linux (Clang compiler)" },
+			{ "ios-arm",       "iOS - ARM"              },
+			{ "ios-simulator", "iOS - Simulator"        },
+			{ "mingw",         "MinGW"                  },
+			{ "nacl",          "Native Client"          },
+			{ "nacl-arm",      "Native Client - ARM"    },
+			{ "osx",           "OSX"                    },
+			{ "pnacl",         "Native Client - PNaCl"  },
+			{ "qnx-arm",       "QNX/Blackberry - ARM"   },
+			{ "rpi",           "RaspberryPi"            },
+		},
 	}
 
-	-- Avoid error when invoking premake4 --help.
+	newoption {
+		trigger = "with-android",
+		value   = "#",
+		description = "Set Android platform version.",
+	}
+
+	-- Avoid error when invoking genie --help.
 	if (_ACTION == nil) then return end
 
 	location (_buildDir .. "projects/" .. _ACTION)
 
 	if _ACTION == "clean" then
 		os.rmdir(BUILD_DIR)
+	end
+
+	local androidPlatform = "android-14"
+	if _OPTIONS["with-android"] then
+		androidPlatform = "android-" .. _OPTIONS["with-android"]
 	end
 
 	if _ACTION == "gmake" then
@@ -103,6 +115,20 @@ function toolchain(_buildDir, _libDir)
 			location (_buildDir .. "projects/" .. _ACTION .. "-freebsd")
 		end
 
+		if "ios-arm" == _OPTIONS["gcc"] then
+			premake.gcc.cc = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
+			premake.gcc.cxx = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
+			premake.gcc.ar = "ar"
+			location (_buildDir .. "projects/" .. _ACTION .. "-ios-arm")
+		end
+
+		if "ios-simulator" == _OPTIONS["gcc"] then
+			premake.gcc.cc = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
+			premake.gcc.cxx = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
+			premake.gcc.ar = "ar"
+			location (_buildDir .. "projects/" .. _ACTION .. "-ios-simulator")
+		end
+
 		if "linux-gcc" == _OPTIONS["gcc"] then
 			location (_buildDir .. "projects/" .. _ACTION .. "-linux")
 		end
@@ -159,6 +185,10 @@ function toolchain(_buildDir, _libDir)
 			location (_buildDir .. "projects/" .. _ACTION .. "-nacl-arm")
 		end
 
+		if "osx" == _OPTIONS["gcc"] then
+			location (_buildDir .. "projects/" .. _ACTION .. "-osx")
+		end
+
 		if "pnacl" == _OPTIONS["gcc"] then
 
 			if not os.getenv("NACL_SDK_ROOT") then
@@ -178,24 +208,6 @@ function toolchain(_buildDir, _libDir)
 			location (_buildDir .. "projects/" .. _ACTION .. "-pnacl")
 		end
 
-		if "osx" == _OPTIONS["gcc"] then
-			location (_buildDir .. "projects/" .. _ACTION .. "-osx")
-		end
-
-		if "ios-arm" == _OPTIONS["gcc"] then
-			premake.gcc.cc = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
-			premake.gcc.cxx = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
-			premake.gcc.ar = "ar"
-			location (_buildDir .. "projects/" .. _ACTION .. "-ios-arm")
-		end
-
-		if "ios-simulator" == _OPTIONS["gcc"] then
-			premake.gcc.cc = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang"
-			premake.gcc.cxx = "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang++"
-			premake.gcc.ar = "ar"
-			location (_buildDir .. "projects/" .. _ACTION .. "-ios-simulator")
-		end
-
 		if "qnx-arm" == _OPTIONS["gcc"] then
 
 			if not os.getenv("QNX_HOST") then
@@ -206,6 +218,10 @@ function toolchain(_buildDir, _libDir)
 			premake.gcc.cxx = "$(QNX_HOST)/usr/bin/arm-unknown-nto-qnx8.0.0eabi-g++"
 			premake.gcc.ar = "$(QNX_HOST)/usr/bin/arm-unknown-nto-qnx8.0.0eabi-ar"
 			location (_buildDir .. "projects/" .. _ACTION .. "-qnx-arm")
+		end
+
+		if "rpi" == _OPTIONS["gcc"] then
+			location (_buildDir .. "projects/" .. _ACTION .. "-rpi")
 		end
 	end
 
@@ -424,7 +440,7 @@ function toolchain(_buildDir, _libDir)
 			"$(ANDROID_NDK_ROOT)/sources/cxx-stl/gnu-libstdc++/4.8/libs/armeabi-v7a/include",
 		}
 		buildoptions {
-			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/android-14/arch-arm",
+			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-arm",
 			"-mthumb",
 			"-march=armv7-a",
 			"-mfloat-abi=softfp",
@@ -433,9 +449,9 @@ function toolchain(_buildDir, _libDir)
 			"-Wundef",
 		}
 		linkoptions {
-			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/android-14/arch-arm",
-			"$(ANDROID_NDK_ROOT)/platforms/android-14/arch-arm/usr/lib/crtbegin_so.o",
-			"$(ANDROID_NDK_ROOT)/platforms/android-14/arch-arm/usr/lib/crtend_so.o",
+			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-arm",
+			"$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-arm/usr/lib/crtbegin_so.o",
+			"$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-arm/usr/lib/crtend_so.o",
 			"-march=armv7-a",
 			"-Wl,--fix-cortex-a8",
 		}
@@ -451,14 +467,14 @@ function toolchain(_buildDir, _libDir)
 			"$(ANDROID_NDK_ROOT)/sources/cxx-stl/gnu-libstdc++/4.8/libs/mips/include",
 		}
 		buildoptions {
-			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/android-14/arch-mips",
+			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-mips",
 			"-Wunused-value",
 			"-Wundef",
 		}
 		linkoptions {
-			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/android-14/arch-mips",
-			"$(ANDROID_NDK_ROOT)/platforms/android-14/arch-mips/usr/lib/crtbegin_so.o",
-			"$(ANDROID_NDK_ROOT)/platforms/android-14/arch-mips/usr/lib/crtend_so.o",
+			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-mips",
+			"$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-mips/usr/lib/crtbegin_so.o",
+			"$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-mips/usr/lib/crtend_so.o",
 		}
 
 	configuration { "android-x86" }
@@ -472,7 +488,7 @@ function toolchain(_buildDir, _libDir)
 			"$(ANDROID_NDK_ROOT)/sources/cxx-stl/gnu-libstdc++/4.8/libs/x86/include",
 		}
 		buildoptions {
-			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/android-14/arch-x86",
+			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-x86",
 			"-march=i686",
 			"-mtune=atom",
 			"-mstackrealign",
@@ -482,9 +498,9 @@ function toolchain(_buildDir, _libDir)
 			"-Wundef",
 		}
 		linkoptions {
-			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/android-14/arch-x86",
-			"$(ANDROID_NDK_ROOT)/platforms/android-14/arch-x86/usr/lib/crtbegin_so.o",
-			"$(ANDROID_NDK_ROOT)/platforms/android-14/arch-x86/usr/lib/crtend_so.o",
+			"--sysroot=$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-x86",
+			"$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-x86/usr/lib/crtbegin_so.o",
+			"$(ANDROID_NDK_ROOT)/platforms/" .. androidPlatform .. "/arch-x86/usr/lib/crtend_so.o",
 		}
 
 	configuration { "asmjs" }
@@ -695,6 +711,35 @@ function toolchain(_buildDir, _libDir)
 			"-Wundef",
 		}
 
+	configuration { "rpi" }
+		targetdir (_buildDir .. "rpi" .. "/bin")
+		objdir (_buildDir .. "rpi" .. "/obj")
+		libdirs {
+			_libDir .. "lib/rpi",
+			"/opt/vc/lib",
+		}
+		defines {
+			"__VCCOREVER__=0x04000000", -- There is no special prefedined compiler symbol to detect RaspberryPi, faking it.
+			"__STDC_VERSION__=199901L",
+		}
+		buildoptions {
+			"-std=c++0x",
+			"-U__STRICT_ANSI__",
+			"-Wunused-value",
+			"-Wundef",
+		}
+		includedirs {
+			"/opt/vc/include",
+			"/opt/vc/include/interface/vcos/pthreads",
+			"/opt/vc/include/interface/vmcs_host/linux",
+		}
+		links {
+			"rt",
+		}
+		linkoptions {
+			"-Wl,--gc-sections",
+		}
+
 	configuration {} -- reset configuration
 end
 
@@ -718,7 +763,7 @@ function strip()
 			"@$(ANDROID_NDK_X86)/bin/i686-linux-android-strip -s \"$(TARGET)\""
 		}
 
-	configuration { "linux-*", "Release" }
+	configuration { "linux-* or rpi", "Release" }
 		postbuildcommands {
 			"@echo Stripping symbols.",
 			"@strip -s \"$(TARGET)\""
